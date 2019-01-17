@@ -15,6 +15,17 @@ struct AcronymsController: RouteCollection {
         acronymRoutes.get("first", use: getFirstHandler)
         acronymRoutes.get("sorted", use: sortedHandler)
         acronymRoutes.get(Acronym.parameter, "user", use: getUserHandler)
+        acronymRoutes.post(Acronym.parameter,
+                           "categories",
+                           Category.parameter,
+                           use: addCategoriesHandler)
+        acronymRoutes.get(Acronym.parameter,
+                          "categories",
+                          use: getCategoriesHandler)
+        acronymRoutes.delete(Acronym.parameter,
+                             "categories",
+                             Category.parameter,
+                             use: removeCategoriesHandler)
     }
 
     func getAllHandler(_ req: Request) throws -> Future<[Acronym]> {
@@ -88,71 +99,101 @@ struct AcronymsController: RouteCollection {
         }
     }
 
+    func addCategoriesHandler(_ req: Request) throws -> Future<HTTPStatus> {
+        return try
+            flatMap(to: HTTPStatus.self,
+                    req.parameters.next(Acronym.self),
+                    req.parameters.next(Category.self)) {
+                        acronym, category in
+                        return acronym.categories
+                            .attach(category, on: req)
+                            .transform(to: .created)
+        }
+    }
+
+    func getCategoriesHandler(_ req: Request) throws -> Future<[Category]> {
+        return try req.parameters.next(Acronym.self)
+            .flatMap(to: [Category].self) { acronym in
+                try acronym.categories.query(on: req).all()
+        }
+    }
+
+    func removeCategoriesHandler(_ req: Request) throws -> Future<HTTPStatus> {
+        return try
+            flatMap(to: HTTPStatus.self,
+                    req.parameters.next(Acronym.self),
+                    req.parameters.next(Category.self)) {
+                        acronym, category in
+                        return acronym.categories
+                            .detach(category, on: req)
+                            .transform(to: .noContent)
+        }
+    }
 }
 
 /*
-router.post("api", "acronyms") { req -> Future<Acronym> in
-    return try req.content.decode(Acronym.self)
-        .flatMap(to: Acronym.self, { acronym in
-            return acronym.save(on: req)
-        })
-}
+ router.post("api", "acronyms") { req -> Future<Acronym> in
+ return try req.content.decode(Acronym.self)
+ .flatMap(to: Acronym.self, { acronym in
+ return acronym.save(on: req)
+ })
+ }
 
-router.get("api", "acronyms") { req -> Future<[Acronym]> in
-    return Acronym.query(on: req).all()
-}
+ router.get("api", "acronyms") { req -> Future<[Acronym]> in
+ return Acronym.query(on: req).all()
+ }
 
-router.get("api", "acronyms", Acronym.parameter) { req -> Future<Acronym> in
-    return try req.parameters.next(Acronym.self)
-}
+ router.get("api", "acronyms", Acronym.parameter) { req -> Future<Acronym> in
+ return try req.parameters.next(Acronym.self)
+ }
 
-router.put("api", "acronyms", Acronym.parameter) { req -> Future<Acronym> in
-    return try flatMap(to: Acronym.self,
-                       req.parameters.next(Acronym.self),
-                       req.content.decode(Acronym.self)) {
-                        acronym, updatedAcronym in
-                        acronym.short = updatedAcronym.short
-                        acronym.long = updatedAcronym.long
+ router.put("api", "acronyms", Acronym.parameter) { req -> Future<Acronym> in
+ return try flatMap(to: Acronym.self,
+ req.parameters.next(Acronym.self),
+ req.content.decode(Acronym.self)) {
+ acronym, updatedAcronym in
+ acronym.short = updatedAcronym.short
+ acronym.long = updatedAcronym.long
 
-                        return acronym.save(on: req)
-    }
-}
+ return acronym.save(on: req)
+ }
+ }
 
-router.delete("api", "acronyms", Acronym.parameter) { req -> Future<HTTPStatus> in
-    return try req.parameters.next(Acronym.self)
-        .delete(on: req)
-        .transform(to: HTTPStatus.noContent)
-}
+ router.delete("api", "acronyms", Acronym.parameter) { req -> Future<HTTPStatus> in
+ return try req.parameters.next(Acronym.self)
+ .delete(on: req)
+ .transform(to: HTTPStatus.noContent)
+ }
 
-router.get("api", "acronyms", "search") { req -> Future<[Acronym]> in
-    guard let searchTerm = req.query[String.self, at: "term"] else {
-        throw Abort(.badRequest)
-    }
+ router.get("api", "acronyms", "search") { req -> Future<[Acronym]> in
+ guard let searchTerm = req.query[String.self, at: "term"] else {
+ throw Abort(.badRequest)
+ }
 
-    //        return Acronym.query(on: req)
-    //            .filter(\.short == searchTerm)
-    //            .all()
+ //        return Acronym.query(on: req)
+ //            .filter(\.short == searchTerm)
+ //            .all()
 
-    return Acronym.query(on: req).group(.or) { or in
-        or.filter(\.short == searchTerm)
-        or.filter(\.long == searchTerm)
-        }.all()
-}
+ return Acronym.query(on: req).group(.or) { or in
+ or.filter(\.short == searchTerm)
+ or.filter(\.long == searchTerm)
+ }.all()
+ }
 
-router.get("api", "acronyms", "first") { req -> Future<Acronym> in
-    return Acronym.query(on: req)
-        .first()
-        .map(to: Acronym.self) { acronym in
-            guard let acronym = acronym else {
-                throw Abort(.notFound)
-            }
-            return acronym
-    }
-}
+ router.get("api", "acronyms", "first") { req -> Future<Acronym> in
+ return Acronym.query(on: req)
+ .first()
+ .map(to: Acronym.self) { acronym in
+ guard let acronym = acronym else {
+ throw Abort(.notFound)
+ }
+ return acronym
+ }
+ }
 
-router.get("api", "acronyms", "sorted") { req -> Future<[Acronym]> in
-    return Acronym.query(on: req)
-        .sort(\.short, .ascending)
-        .all()
-}
-*/
+ router.get("api", "acronyms", "sorted") { req -> Future<[Acronym]> in
+ return Acronym.query(on: req)
+ .sort(\.short, .ascending)
+ .all()
+ }
+ */
